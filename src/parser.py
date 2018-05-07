@@ -1,8 +1,10 @@
-from enum import Enum
-from typing import NamedTuple
-from selenium import webdriver
 from collections import namedtuple
-from src.song_manager import SongManager
+from enum import Enum
+
+from selenium import webdriver
+from src.song_finder import SongAdder
+
+SongInfo = namedtuple('SongInfo', 'title artist link pack_name')
 
 
 class PageLink(Enum):
@@ -48,29 +50,22 @@ class Authenticator:
         self.__type_login()
         self.__type_password()
         self.driver.find_element_by_class_name(Element.login_confirm.value).click()
-        for c in self.driver.get_cookies():
-            print(c)
+        print('User %s logged in successfully.' % self.user)
 
 
 class ClearedParser:
 
-    class SongInfo(NamedTuple):
-        artist: str
-        href: str
-        pack_name: str
-
     def __init__(self, driver):
         self.page = 1
         self.driver = driver
-        self.manager = SongManager()
+        self.adder = SongAdder(driver)
 
     def init(self):
-        while self.parse_page() != 0:
-            pass
-
-    def find_packs(self):
-        self.driver.get(PageLink.beatmaps.value + str(self.page))
-        return self.driver.find_elements_by_class_name(Element.pack.value)
+        try:
+            while self.parse_page() != 0:
+                pass
+        finally:
+            self.driver.close()
 
     def parse_page(self):
         packs = self.find_packs()
@@ -78,6 +73,10 @@ class ClearedParser:
             self.parse_pack(pack)
         self.page += 1
         return len(packs)
+
+    def find_packs(self):
+        self.driver.get(PageLink.beatmaps.value + str(self.page))
+        return self.driver.find_elements_by_class_name(Element.pack.value)
 
     def parse_pack(self, pack):
         pack.click()
@@ -99,23 +98,15 @@ class ClearedParser:
 
     def extract_info(self, song, pack_name):
         title = song.find_element_by_class_name(Element.song_title.value).text.strip()
-        self.verify(title, song, pack_name)
         artist = song.find_element_by_class_name(Element.song_artist.value).text
         download = self.find_download_page(song)
         self.update_by_title(title, artist, download, pack_name)
-
-    def verify(self, title, song, pack_name):
-        if title == "":
-            self.extract_info(song, pack_name)
-
-    def update_by_title(self, title, artist, download, pack_name):
-        SongInfo = namedtuple('SongInfo', 'title artist download pack_name')
-        entry = SongInfo(title, artist, download, pack_name)
-        downloaded = self.manager.find_downloaded_songs()
-        if entry.title not in downloaded:
-            self.manager.add_song(entry)
 
     def find_download_page(self, song):
         download_element = song.find_element_by_class_name(Element.song_download.value)
         link = download_element.get_property(PageLink.href.value)
         return link + PageLink.extension.value
+
+    def update_by_title(self, title, artist, link, pack_name):
+        entry = SongInfo(title, artist, link, pack_name)
+        self.adder.add_song(entry)
