@@ -2,6 +2,7 @@ from collections import namedtuple
 from enum import Enum
 
 from selenium import webdriver
+
 from src.song_finder import SongAdder
 
 SongInfo = namedtuple('SongInfo', 'title artist link pack_name')
@@ -50,7 +51,7 @@ class Authenticator:
         self.__type_login()
         self.__type_password()
         self.driver.find_element_by_class_name(Element.login_confirm.value).click()
-        print('User %s logged in successfully.' % self.user)
+        print('%s logged in successfully.' % self.user)
 
 
 class ClearedParser:
@@ -62,13 +63,16 @@ class ClearedParser:
 
     def init(self):
         try:
-            while self.parse_page() != 0:
-                pass
+            page = 1
+            print("Parsing started on page %d." % page)
+            while self.parse_page(page) != 0:
+                page += 1
         finally:
             self.driver.close()
 
-    def parse_page(self):
+    def parse_page(self, page):
         packs = self.find_packs()
+        print("Parsing page %d, %d packs." % (page, len(packs)))
         for pack in packs:
             self.parse_pack(pack)
         self.page += 1

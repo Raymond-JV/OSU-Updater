@@ -94,15 +94,21 @@ class SongDownloader:
 
     def verify_write_file(self, song_name, song_size, song_data):
         song_path = self.osu_dir + '\\' + song_name
-        if not os.path.exists(song_path):
-            print("Adding %s \nSize:%s" % song_name, song_size)
+
+        exists = os.path.exists(song_path)
+
+        if exists and os.path.getsize(song_path) < song_size:
+            print("Corrupt file detected. Redownloading %s." % song_name)
+            self.write_song(song_path, song_data)
+
+        elif not exists:
+            print("Adding %s" % song_name)
             self.write_song(song_path, song_data)
         else:
             print("%s already owned" % song_name)
-        print("done")
 
     def write_song(self, song_path, song_data):
         with open(song_path, 'wb') as f:
             for chunk in song_data.iter_content(self.Http.buffer_size.value):
                 f.write(chunk)
-        print("Wrote beatmap to %s", song_path)
+        print("Wrote beatmap to %s" % song_path)

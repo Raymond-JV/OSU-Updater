@@ -2,13 +2,10 @@ import argparse
 import getpass
 
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 
 from src.parser import Authenticator
 from src.parser import ClearedParser
-
-
-def pre_processing():
-    pass
 
 
 def command_line():
@@ -21,9 +18,16 @@ def command_line():
     run(args.username, password)
 
 
-def run(user, password):
-    driver = webdriver.Firefox()
+def create_driver():
+    options = Options()
+    options.set_headless(headless=True)
+    driver = webdriver.Firefox(firefox_options=options)
     driver.implicitly_wait(10)
+    return driver
+
+
+def run(user, password):
+    driver = create_driver()
     auth = Authenticator(driver, user, password)
     auth.login()
     downloader = ClearedParser(driver)
